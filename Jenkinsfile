@@ -17,7 +17,7 @@ pipeline {
         stage('Install Backend Dependencies') {
             steps {
                 dir('backend') {
-                    sh 'npm install'
+                    bat 'npm install'
                     echo 'Backend dependencies installed successfully'
                 }
             }
@@ -26,7 +26,7 @@ pipeline {
         stage('Install Frontend Dependencies') {
             steps {
                 dir('frontend') {
-                    sh 'npm install'
+                    bat 'npm install'
                     echo 'Frontend dependencies installed successfully'
                 }
             }
@@ -35,7 +35,16 @@ pipeline {
         stage('Environment Setup') {
             steps {
                 dir('backend') {
-                    sh 'cp .env.example .env || true'
+                    script {
+                        bat '''
+                            if not exist .env (
+                                copy .env.example .env
+                                echo Environment file copied from .env.example
+                            ) else (
+                                echo .env file already exists, skipping copy
+                            )
+                        '''
+                    }
                     echo 'Environment file prepared'
                 }
             }
@@ -44,7 +53,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    sh "${DOCKER_COMPOSE} build"
+                    bat "${DOCKER_COMPOSE} build"
                     echo 'Docker images built successfully'
                 }
             }
@@ -53,7 +62,7 @@ pipeline {
         stage('Start Containers') {
             steps {
                 script {
-                    sh "${DOCKER_COMPOSE} up -d"
+                    bat "${DOCKER_COMPOSE} up -d"
                     echo 'Containers started successfully'
                 }
             }
@@ -63,7 +72,7 @@ pipeline {
             steps {
                 script {
                     sleep 10
-                    sh "${DOCKER_COMPOSE} ps"
+                    bat "${DOCKER_COMPOSE} ps"
                     echo 'Health check completed'
                 }
             }
@@ -73,11 +82,23 @@ pipeline {
     post {
         success {
             echo 'Pipeline completed successfully!'
-            sh "${DOCKER_COMPOSE} logs --tail=50 || true"
+            script {
+                try {
+                    bat "${DOCKER_COMPOSE} logs --tail=50"
+                } catch (Exception e) {
+                    echo "Could not fetch docker logs: ${e.getMessage()}"
+                }
+            }
         }
         failure {
             echo 'Pipeline failed!'
-            sh "${DOCKER_COMPOSE} logs --tail=100 || true"
+            script {
+                try {
+                    bat "${DOCKER_COMPOSE} logs --tail=100"
+                } catch (Exception e) {
+                    echo "Could not fetch docker logs: ${e.getMessage()}"
+                }
+            }
         }
         always {
             echo 'Cleaning up workspace...'
