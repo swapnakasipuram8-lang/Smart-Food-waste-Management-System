@@ -1,7 +1,7 @@
 pipeline {
 agent any
 
-```
+
 environment {
     DOCKER = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe'
 }
@@ -112,6 +112,6 @@ post {
         echo 'Jenkins pipeline execution finished.'
     }
 }
-```
+
 
 }
