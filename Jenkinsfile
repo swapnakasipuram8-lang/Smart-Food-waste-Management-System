@@ -1,142 +1,117 @@
-
 pipeline {
-    agent any
+agent any
 
-    environment {
-        DOCKER_COMPOSE = 'docker compose'
-        APP_NAME = 'food-waste-management'
+```
+environment {
+    DOCKER = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe'
+}
+
+stages {
+
+    stage('Checkout') {
+        steps {
+            checkout scm
+            echo 'Source code checked out successfully'
+        }
     }
 
-    stages {
+    stage('Check Docker') {
+        steps {
+            bat "\"%DOCKER%\" --version"
+            bat "\"%DOCKER%\" compose version"
+            echo 'Docker and Docker Compose are available'
+        }
+    }
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-                echo 'Checked out source code successfully'
+    stage('Install Backend Dependencies') {
+        steps {
+            dir('backend') {
+                bat 'npm install'
+                echo 'Backend dependencies installed successfully'
             }
         }
+    }
 
-        stage('Check Docker') {
-            steps {
-                bat 'docker --version'
-                bat 'docker compose version'
-                echo 'Docker and Docker Compose are available'
+    stage('Install Frontend Dependencies') {
+        steps {
+            dir('frontend') {
+                bat 'npm install'
+                echo 'Frontend dependencies installed successfully'
             }
         }
+    }
 
-        stage('Install Backend Dependencies') {
-            steps {
-                dir('backend') {
-                    bat 'npm install'
-                    echo 'Backend dependencies installed successfully'
-                }
-            }
-        }
-
-        stage('Install Frontend Dependencies') {
-            steps {
-                dir('frontend') {
-                    bat 'npm install'
-                    echo 'Frontend dependencies installed successfully'
-                }
-            }
-        }
-
-        stage('Environment Setup') {
-            steps {
-                dir('backend') {
-                    bat '''
-                        if not exist .env (
-                            if exist .env.example (
-                                copy .env.example .env
-                                echo Environment file copied from .env.example
-                            ) else (
-                                echo ERROR: .env.example file not found
-                                exit /b 1
-                            )
-                        ) else (
-                            echo .env file already exists, skipping copy
-                        )
-                    '''
-                    echo 'Environment file prepared'
-                }
-            }
-        }
-
-        stage('Check Docker Compose File') {
-            steps {
+    stage('Environment Setup') {
+        steps {
+            dir('backend') {
                 bat '''
-                    if exist docker-compose.yml (
-                        echo Found docker-compose.yml
-                    ) else if exist docker-compose.yaml (
-                        echo Found docker-compose.yaml
-                    ) else if exist compose.yml (
-                        echo Found compose.yml
-                    ) else if exist compose.yaml (
-                        echo Found compose.yaml
+                    if not exist .env (
+                        if exist .env.example (
+                            copy .env.example .env
+                            echo .env created successfully
+                        ) else (
+                            echo ERROR: .env.example not found
+                            exit /b 1
+                        )
                     ) else (
-                        echo ERROR: Docker Compose file not found
-                        exit /b 1
+                        echo .env already exists
                     )
                 '''
-                echo 'Docker Compose file checked'
-            }
-        }
-
-        stage('Build Docker Images') {
-            steps {
-                bat 'docker compose build'
-                echo 'Docker images built successfully'
-            }
-        }
-
-        stage('Start Containers') {
-            steps {
-                bat 'docker compose up -d'
-                echo 'Containers started successfully'
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                bat 'timeout /t 10 /nobreak'
-                bat 'docker compose ps'
-                echo 'Health check completed'
             }
         }
     }
 
-    post {
-
-        success {
-            echo 'Pipeline completed successfully!'
-
-            script {
-                try {
-                    bat 'docker compose ps'
-                    bat 'docker compose logs --tail=50'
-                } catch (Exception e) {
-                    echo "Could not fetch Docker logs: ${e.getMessage()}"
-                }
-            }
+    stage('Check Docker Compose File') {
+        steps {
+            bat 'dir'
+            bat 'dir docker-compose.yml'
+            echo 'Docker Compose file found'
         }
+    }
 
-        failure {
-            echo 'Pipeline failed!'
-
-            script {
-                try {
-                    bat 'docker compose ps'
-                    bat 'docker compose logs --tail=100'
-                } catch (Exception e) {
-                    echo "Could not fetch Docker logs: ${e.getMessage()}"
-                }
-            }
+    stage('Build Docker Images') {
+        steps {
+            bat "\"%DOCKER%\" compose build"
+            echo 'Docker images built successfully'
         }
+    }
 
-        always {
-            echo 'Pipeline execution finished.'
+    stage('Start Containers') {
+        steps {
+            bat "\"%DOCKER%\" compose up -d"
+            echo 'Containers started successfully'
+        }
+    }
+
+    stage('Health Check') {
+        steps {
+            bat 'timeout /t 10 /nobreak'
+            bat "\"%DOCKER%\" compose ps"
+            echo 'Health check completed'
         }
     }
 }
 
+post {
+    success {
+        echo '======================================'
+        echo 'PIPELINE COMPLETED SUCCESSFULLY!'
+        echo 'SMART FOOD WASTE MANAGEMENT SYSTEM'
+        echo '======================================'
+        bat "\"%DOCKER%\" compose ps"
+    }
+
+    failure {
+        echo '======================================'
+        echo 'PIPELINE FAILED'
+        echo '======================================'
+        bat "\"%DOCKER%\" compose ps"
+    }
+
+    always {
+        echo 'Jenkins pipeline execution finished.'
+    }
+}
+```
+
+}
