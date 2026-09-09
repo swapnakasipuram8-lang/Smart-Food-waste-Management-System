@@ -1,16 +1,28 @@
+```groovy
 pipeline {
     agent any
 
     environment {
-        DOCKER_COMPOSE = 'docker-compose'
+        DOCKER_COMPOSE = 'docker compose'
         APP_NAME = 'food-waste-management'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
                 echo 'Checked out source code successfully'
+            }
+        }
+
+        stage('Check Docker') {
+            steps {
+                bat '''
+                    docker --version
+                    docker compose version
+                '''
+                echo 'Docker and Docker Compose are available'
             }
         }
 
@@ -35,73 +47,99 @@ pipeline {
         stage('Environment Setup') {
             steps {
                 dir('backend') {
-                    script {
-                        bat '''
-                            if not exist .env (
+                    bat '''
+                        if not exist .env (
+                            if exist .env.example (
                                 copy .env.example .env
                                 echo Environment file copied from .env.example
                             ) else (
-                                echo .env file already exists, skipping copy
+                                echo ERROR: .env.example file not found
+                                exit /b 1
                             )
-                        '''
-                    }
+                        ) else (
+                            echo .env file already exists, skipping copy
+                        )
+                    '''
                     echo 'Environment file prepared'
                 }
             }
         }
 
+        stage('Check Docker Compose File') {
+            steps {
+                bat '''
+                    if exist docker-compose.yml (
+                        echo Found docker-compose.yml
+                    ) else if exist docker-compose.yaml (
+                        echo Found docker-compose.yaml
+                    ) else if exist compose.yml (
+                        echo Found compose.yml
+                    ) else if exist compose.yaml (
+                        echo Found compose.yaml
+                    ) else (
+                        echo ERROR: No Docker Compose file found.
+                        echo Please make sure docker-compose.yml or compose.yml exists in the project root.
+                        exit /b 1
+                    )
+                '''
+                echo 'Docker Compose configuration checked'
+            }
+        }
+
         stage('Build Docker Images') {
             steps {
-                script {
-                    bat "${DOCKER_COMPOSE} build"
-                    echo 'Docker images built successfully'
-                }
+                bat 'docker compose build'
+                echo 'Docker images built successfully'
             }
         }
 
         stage('Start Containers') {
             steps {
-                script {
-                    bat "${DOCKER_COMPOSE} up -d"
-                    echo 'Containers started successfully'
-                }
+                bat 'docker compose up -d'
+                echo 'Containers started successfully'
             }
         }
 
         stage('Health Check') {
             steps {
-                script {
-                    sleep 10
-                    bat "${DOCKER_COMPOSE} ps"
-                    echo 'Health check completed'
-                }
+                bat 'timeout /t 10 /nobreak'
+                bat 'docker compose ps'
+                echo 'Health check completed'
             }
         }
     }
 
     post {
+
         success {
             echo 'Pipeline completed successfully!'
+
             script {
                 try {
-                    bat "${DOCKER_COMPOSE} logs --tail=50"
+                    bat 'docker compose ps'
+                    bat 'docker compose logs --tail=50'
                 } catch (Exception e) {
-                    echo "Could not fetch docker logs: ${e.getMessage()}"
+                    echo "Could not fetch Docker information: ${e.getMessage()}"
                 }
             }
         }
+
         failure {
             echo 'Pipeline failed!'
+
             script {
                 try {
-                    bat "${DOCKER_COMPOSE} logs --tail=100"
+                    bat 'docker compose ps'
+                    bat 'docker compose logs --tail=100'
                 } catch (Exception e) {
-                    echo "Could not fetch docker logs: ${e.getMessage()}"
+                    echo "Could not fetch Docker logs: ${e.getMessage()}"
                 }
             }
         }
+
         always {
-            echo 'Cleaning up workspace...'
+            echo 'Pipeline execution finished.'
         }
     }
 }
+```
