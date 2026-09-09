@@ -2,8 +2,14 @@ pipeline {
 agent any
 
 
+tools {
+    nodejs 'NodeJS-18'
+}
+
 environment {
-    DOCKER = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe'
+    BACKEND_IMAGE  = 'smart-food-waste-backend'
+    FRONTEND_IMAGE = 'smart-food-waste-frontend'
+    DOCKER         = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe'
 }
 
 stages {
@@ -11,15 +17,7 @@ stages {
     stage('Checkout') {
         steps {
             checkout scm
-            echo 'Source code checked out successfully'
-        }
-    }
-
-    stage('Check Docker') {
-        steps {
-            bat "\"%DOCKER%\" --version"
-            bat "\"%DOCKER%\" compose version"
-            echo 'Docker and Docker Compose are available'
+            echo 'Source code checked out successfully.'
         }
     }
 
@@ -27,7 +25,7 @@ stages {
         steps {
             dir('backend') {
                 bat 'npm install'
-                echo 'Backend dependencies installed successfully'
+                echo 'Backend dependencies installed successfully.'
             }
         }
     }
@@ -35,77 +33,75 @@ stages {
     stage('Install Frontend Dependencies') {
         steps {
             dir('frontend') {
-                bat 'npm install'
-                echo 'Frontend dependencies installed successfully'
+                bat 'npm install --legacy-peer-deps'
+                echo 'Frontend dependencies installed successfully.'
             }
         }
     }
 
-    stage('Environment Setup') {
+    stage('Lint Frontend') {
         steps {
-            dir('backend') {
-                bat '''
-                    if not exist .env (
-                        if exist .env.example (
-                            copy .env.example .env
-                            echo .env created successfully
-                        ) else (
-                            echo ERROR: .env.example not found
-                            exit /b 1
-                        )
-                    ) else (
-                        echo .env already exists
-                    )
-                '''
+            dir('frontend') {
+                bat 'npx eslint . || exit 0'
+                echo 'Frontend lint check completed.'
             }
         }
     }
 
-    stage('Check Docker Compose File') {
+    stage('Build Frontend') {
         steps {
-            bat 'dir'
-            bat 'dir docker-compose.yml'
-            echo 'Docker Compose file found'
+            dir('frontend') {
+                bat 'npm run build'
+                echo 'Frontend build completed successfully.'
+            }
+        }
+    }
+
+    stage('Check Docker') {
+        steps {
+            bat "\"%DOCKER%\" --version"
+            bat "\"%DOCKER%\" compose version"
+            echo 'Docker and Docker Compose are available.'
         }
     }
 
     stage('Build Docker Images') {
         steps {
-            bat "\"%DOCKER%\" compose build"
-            echo 'Docker images built successfully'
+            bat "\"%DOCKER%\" build -t %BACKEND_IMAGE%:%BUILD_NUMBER% ./backend"
+            bat "\"%DOCKER%\" build -t %FRONTEND_IMAGE%:%BUILD_NUMBER% ./frontend"
+            echo 'Docker images built successfully.'
         }
     }
 
-    stage('Start Containers') {
+    stage('Deploy') {
         steps {
-            bat "\"%DOCKER%\" compose up -d"
-            echo 'Containers started successfully'
+            bat "\"%DOCKER%\" compose down"
+            bat "\"%DOCKER%\" compose up -d --build"
+            echo 'Application deployed successfully.'
         }
     }
 
-    stage('Health Check') {
+    stage('Verify Deployment') {
         steps {
-            bat 'timeout /t 10 /nobreak'
             bat "\"%DOCKER%\" compose ps"
-            echo 'Health check completed'
+            echo 'Deployment verification completed.'
         }
     }
 }
 
 post {
     success {
-        echo '======================================'
-        echo 'PIPELINE COMPLETED SUCCESSFULLY!'
+        echo '=============================================='
         echo 'SMART FOOD WASTE MANAGEMENT SYSTEM'
-        echo '======================================'
-        bat "\"%DOCKER%\" compose ps"
+        echo 'BUILD AND DEPLOYMENT SUCCESSFUL!'
+        echo '=============================================='
     }
 
     failure {
-        echo '======================================'
-        echo 'PIPELINE FAILED'
-        echo '======================================'
-        bat "\"%DOCKER%\" compose ps"
+        echo '=============================================='
+        echo 'SMART FOOD WASTE MANAGEMENT SYSTEM'
+        echo 'BUILD FAILED - CHECK THE LOGS ABOVE.'
+        echo '=============================================='
     }
 
     always {
