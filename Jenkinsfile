@@ -1,4 +1,4 @@
-groovy
+```groovy
 pipeline {
     agent any
 
@@ -18,10 +18,8 @@ pipeline {
 
         stage('Check Docker') {
             steps {
-                bat '''
-                    docker --version
-                    docker compose version
-                '''
+                bat 'docker --version'
+                bat 'docker compose version'
                 echo 'Docker and Docker Compose are available'
             }
         }
@@ -77,12 +75,11 @@ pipeline {
                     ) else if exist compose.yaml (
                         echo Found compose.yaml
                     ) else (
-                        echo ERROR: No Docker Compose file found.
-                        echo Please make sure docker-compose.yml or compose.yml exists in the project root.
+                        echo ERROR: Docker Compose file not found
                         exit /b 1
                     )
                 '''
-                echo 'Docker Compose configuration checked'
+                echo 'Docker Compose file checked'
             }
         }
 
@@ -119,7 +116,7 @@ pipeline {
                     bat 'docker compose ps'
                     bat 'docker compose logs --tail=50'
                 } catch (Exception e) {
-                    echo "Could not fetch Docker information: ${e.getMessage()}"
+                    echo "Could not fetch Docker logs: ${e.getMessage()}"
                 }
             }
         }
@@ -142,4 +139,4 @@ pipeline {
         }
     }
 }
-
+```
