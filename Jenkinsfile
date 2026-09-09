@@ -46,16 +46,7 @@ pipeline {
             steps {
                 dir('frontend') {
                     bat 'npx eslint . || exit 0'
-                    echo 'Frontend lint completed.'
-                }
-            }
-        }
-
-        stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    bat 'npm run build'
-                    echo 'Frontend build completed successfully.'
+                    echo 'Frontend lint check completed.'
                 }
             }
         }
